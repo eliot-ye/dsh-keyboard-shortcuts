@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Keyboard shortcuts",
+    "description": "Registers real commands in DSH's shortcut registry: on Desktop, Alt+digit switches to the 1st-9th sidebar session, Alt+I focuses the message composer, and Alt+N starts a new chat (Web uses Cmd/Ctrl+Alt for the same actions). While the shortcut modifier is held, a semi-transparent numbered badge is shown on each target."
+  }
+}

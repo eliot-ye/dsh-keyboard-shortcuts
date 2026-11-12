@@ -1,0 +1,7 @@
+# Insert the keyboard-shortcuts plugin row into the current profile's loader tree.
+# The Host half (index.js) is a no-op; the Web UI behavior lives in ./client.js,
+# which the manifest's `dsh.client` section loads immediately on the page.
+- insert:
+    - id: keyboard-shortcuts
+      name: '@local/dsh-keyboard-shortcuts'
+      config: {}
