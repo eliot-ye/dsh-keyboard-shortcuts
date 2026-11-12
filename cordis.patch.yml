@@ -3,5 +3,5 @@
 # which the manifest's `dsh.client` section loads immediately on the page.
 - insert:
     - id: keyboard-shortcuts
-      name: '@local/dsh-keyboard-shortcuts'
+      name: 'dsh-keyboard-shortcuts'
       config: {}

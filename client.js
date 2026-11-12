@@ -30,11 +30,6 @@
  * document order): exactly the current workspace's unarchived sessions as DSH
  * displays them after its grouping / recency / pin filter.
  *
- * New Chat IS registered (keyboard.new-chat) on the same per-profile defaults,
- * driving `uiWorkspace.startSession()`. On Desktop it runs through the capture
- * listener (letters reach the DOM); it does not conflict with DSH's native
- * `session.new` (Cmd+N / Cmd+Alt+N) because that is a different chord.
- *
  * Digit switching on Desktop is driven by the command `resolve` instead: the
  * native keyboard bridge intercepts a *bound* chord before it reaches the
  * renderer DOM, so Alt+digit never becomes a DOM keydown there — but the bridge
@@ -47,7 +42,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: '@local/dsh-keyboard-shortcuts',
+  id: 'dsh-keyboard-shortcuts',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
@@ -190,25 +185,6 @@ window.__ModuleLoader__.load({
       return true;
     }
 
-    /** Start a brand-new chat by driving DSH's own workspace service, so the
-     *  new session is created exactly as the native new-chat control would. */
-    function startNewChat(ctx) {
-      const workspace = getService(ctx, 'uiWorkspace');
-      if (workspace && typeof workspace.startSession === 'function') {
-        workspace.startSession();
-        return true;
-      }
-      return false;
-    }
-
-    /** Best-effort locator for the sidebar's "new chat" control (for the badge). */
-    function findNewChatEl() {
-      return Array.from(document.querySelectorAll('button, a, [role="button"]')).find((el) => {
-        const name = (el.getAttribute('aria-label') || el.textContent || '').trim();
-        return /new (chat|session|conversation)|新建|新对话|新会话/i.test(name);
-      }) || null;
-    }
-
     const badgeStyle = {
       position: 'fixed',
       minWidth: '18px',
@@ -296,10 +272,10 @@ window.__ModuleLoader__.load({
                       if (!el || !isVisible(el)) return;
                       targets.push({ label, rect: el.getBoundingClientRect() });
                     };
-                    push(findNewChatEl(), 'N');
                     push(findComposer(), 'I');
                     // Enumerate the SAME visible rows, in the SAME order, that
-                    // the switch action uses, so badge N always matches Alt+N.
+                    // the switch action uses, so badge digit always matches
+                    // Alt+digit.
                     Array.from(document.querySelectorAll(SESSION_ROW_SELECTOR))
                       .filter(isVisible)
                       .slice(0, 9)
@@ -389,35 +365,6 @@ window.__ModuleLoader__.load({
             );
           }
 
-          // New Chat on Alt+N (desktop). This does NOT conflict with DSH's native
-          // `session.new` (Cmd+N / Cmd+Alt+N): a different chord, so the registry's
-          // conflict check is clean. resolve drives uiWorkspace.startSession()
-          // directly so the native keyboard bridge — which intercepts a bound chord
-          // before it reaches the renderer DOM — still creates the session.
-          tryRegister(
-            {
-              id: 'keyboard.new-chat',
-              label: () => '新建会话 / New chat',
-              aliases: ['new chat', 'new session', '新建会话', '新对话'],
-              defaults: defaultsFor('KeyN'),
-              regions: ['page', 'editable'],
-              modals: ['sidebar'],
-              resolve: (context) => {
-                // Desktop: KeyN is a letter, so its keydown reaches the renderer
-                // DOM and the capture listener below executes the action (same
-                // proven path as focus-composer). Returning `pass` here avoids a
-                // double new-chat if the native bridge were to also dispatch.
-                if (desktop) return { status: 'pass' };
-                const workspace = getService(ctx, 'uiWorkspace');
-                if (!workspace || typeof workspace.startSession !== 'function') {
-                  return { status: 'blocked', reason: '无法新建会话 / cannot start session' };
-                }
-                return { status: 'handled', run: () => workspace.startSession() };
-              }
-            },
-            'keyboard.new-chat'
-          );
-
           tryRegister(
             {
               id: 'keyboard.focus-composer',
@@ -449,14 +396,12 @@ window.__ModuleLoader__.load({
               function onKeyDown(event) {
                 if (!gestureMatches(ctx, event) || !event.code) return;
                 let handled = false;
-                // KeyN (Alt+N) and KeyI (Alt+I) are letters, so their keydown
-                // reaches the renderer DOM and this listener executes them — the
-                // same reliable path. Digits may NOT reach the DOM (native bridge
-                // intercepts a bound chord); those are handled by the registered
-                // command's `resolve` via the native bridge instead.
-                if (event.code === 'KeyN') {
-                  handled = startNewChat(ctx);
-                } else if (event.code === 'KeyI') {
+                // KeyI (Alt+I) is a letter, so its keydown reaches the renderer
+                // DOM and this listener executes it — the same reliable path.
+                // Digits may NOT reach the DOM (native bridge intercepts a bound
+                // chord); those are handled by the registered command's `resolve`
+                // via the native bridge instead.
+                if (event.code === 'KeyI') {
                   handled = focusComposerEl(findComposer());
                 } else {
                   const digits = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'];

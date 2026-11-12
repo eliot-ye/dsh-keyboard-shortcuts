@@ -1,9 +1,8 @@
 {
-  "name": "@local/dsh-keyboard-shortcuts",
-  "version": "1.0.0",
-  "private": true,
+  "name": "dsh-keyboard-shortcuts",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Global keyboard shortcuts: new chat, focus the composer, and switch to the 1st-9th sidebar session, with a numbered hint badge while the modifier is held.",
+  "description": "Global keyboard shortcuts: focus the composer and switch to the 1st-9th sidebar session, with a numbered hint badge while the modifier is held.",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
