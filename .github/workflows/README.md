@@ -37,14 +37,16 @@ Publishing the release is what triggers the workflow — you don't click a separ
 1. `actions/checkout` at the release tag
 2. `actions/setup-node` with Node 24 + npm registry (no package-manager cache)
 3. `npm ci`
-4. `npm run typecheck`
-5. `npm test`
-6. `npm publish --provenance`
+4. `npm publish --provenance`
 
-Steps 1–5 mirror the local release gate exactly, so a green CI run means the local gates would have passed.
+There is intentionally **no typecheck or test step**: this bundle is plain
+JavaScript (`client.js` / `index.js`, `type: module`) with no build step, no
+`tsconfig.json`, and no test suite, so `package.json` has no `scripts` section.
+CI installs dependencies and publishes — nothing to compile or verify first.
 
 ## Not covered
 
-- **Changelog generation.** Manual. If you want it automated, add `release-please` or `semantic-release`.
+- **Changelog generation.** Manual — kept in [`CHANGELOG.md`](../../CHANGELOG.md). If you want it automated, add `release-please` or `semantic-release`.
 - **Automatic publish on tag push.** Deliberately release-driven — the GitHub Release page doubles as the changelog, and publishing the release is the intentional "ship it" click.
-- **Cross-platform builds.** This package is pure TypeScript loaded by pi at runtime via jiti — no build step needed.
+- **Typecheck / tests.** None exist for this bundle (see above). If you add TypeScript or a test suite, wire the commands into `npm-publish.yml` here.
+- **Cross-platform builds.** This is a plain JS DSH bundle loaded by the host at runtime — no build step needed.

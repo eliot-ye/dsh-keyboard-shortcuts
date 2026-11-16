@@ -1,5 +1,9 @@
 # Keyboard shortcuts
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![npm version](https://img.shields.io/npm/v/dsh-keyboard-shortcuts.svg)](https://www.npmjs.com/package/dsh-keyboard-shortcuts)
+[![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](./package.json)
+
 Global keyboard shortcuts for DeepSeek Harness (DSH): jump to a sidebar session
 and focus the message composer, with a numbered hint badge shown while the
 shortcut modifier is held.
@@ -51,19 +55,22 @@ at this directory (DSH links the checkout), or place it under your profile's
 `node_modules`. It is enabled like any other bundle; the web client loads
 immediately on page load (`dsh.client.immediately`).
 
-## Files
+## Development
 
-- `index.js` — Host half; a no-op `apply()` that only satisfies the `.` export
-  (the capability is entirely a Web UI concern).
-- `client.js` — the Web UI behavior: command registration, the Desktop capture
-  listener, and the hint-badge overlay.
-- `cordis.patch.yml` — inserts the plugin row into the profile's loader tree.
-- `locale/*.json` — Plugin Manager title/description (`meta.title` /
-  `meta.description`).
-- `icon.svg` — the bundle icon.
-- `openspec/` — per-subsystem specifications.
+This bundle is plain JavaScript (`"type": "module"`) — there is no build step,
+no TypeScript, and no test suite, so `package.json` has no `scripts` section.
+To try it out, install it as a local bundle (see **Install**) and reload the DSH
+web client; `client.js` runs immediately on page load.
 
-> The `factory` id registered in `client.js` and the plugin row `name` in
-> `cordis.patch.yml` must both equal the package name `dsh-keyboard-shortcuts`;
-> DSH's module loader resolves the client factory by that id. See
-> `openspec/specs/bundle-manifest/spec.md`.
+Releasing is done via npm Trusted Publishing — bump the version, push the tag,
+and publish a GitHub Release. Full steps: [`.github/workflows/README.md`](.github/workflows/README.md).
+
+Per-subsystem design details live in [`openspec/specs/`](openspec/specs/). If you
+rename the package, note that the `factory` id in `client.js` and the plugin row
+`name` in `cordis.patch.yml` must both equal the package name
+(`dsh-keyboard-shortcuts`) — DSH resolves the client factory by that id.
+
+## License
+
+[MIT](./LICENSE) © Eliot. Issues and pull requests are welcome at the
+[repository](https://github.com/eliot-ye/dsh-keyboard-shortcuts).

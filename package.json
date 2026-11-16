@@ -2,7 +2,28 @@
   "name": "dsh-keyboard-shortcuts",
   "version": "1.0.0",
   "type": "module",
+  "license": "MIT",
   "description": "Global keyboard shortcuts: focus the composer and switch to the 1st-9th sidebar session, with a numbered hint badge while the modifier is held.",
+  "author": "Eliot <eliot_ye@163.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliot-ye/dsh-keyboard-shortcuts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eliot-ye/dsh-keyboard-shortcuts/issues"
+  },
+  "homepage": "https://github.com/eliot-ye/dsh-keyboard-shortcuts#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-bundle",
+    "keyboard-shortcuts",
+    "plugin",
+    "shortcut"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
