@@ -1,6 +1,6 @@
 {
   "name": "dsh-keyboard-shortcuts",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Global keyboard shortcuts: focus the composer and switch to the 1st-9th sidebar session, with a numbered hint badge while the modifier is held.",
   "exports": {
@@ -18,7 +18,9 @@
     "icon.svg"
   ],
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "immediately": true,
