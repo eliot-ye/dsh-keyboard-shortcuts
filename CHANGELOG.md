@@ -27,6 +27,19 @@ Changelog entries are written by hand; the release flow itself is documented in
 
 ## [Unreleased]
 
+### Added
+
+- Ask popup (`ask_user_question`) shortcuts, so the dialog can be answered from
+  the keyboard:
+  - `keyboard.ask-submit` — submit / advance the open ask popup (`Alt` + `S`).
+  - `Alt` + `1`..`3` — select the Nth visible option of the open popup.
+  - `↓` / `↑` — move the highlight between the popup's visible options (and back
+    into its text input from the ends), without changing the selection.
+  - `Space` — select the highlighted option (single choice) or toggle it (multi
+    choice).
+  - A three-level guard (popup open, focus outside the text input, no IME
+    composition) keeps these keys from hijacking typing.
+
 ### Changed
 
 - Documentation: corrected the CI/release notes, which described `npm run

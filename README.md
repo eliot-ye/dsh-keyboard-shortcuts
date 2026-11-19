@@ -29,6 +29,38 @@ part in conflict detection, and can be reassigned from DSH's settings.
   target (`I` for the composer, `1`..`9` for the first nine visible sessions) and
   hidden on release.
 
+## Ask popup shortcuts
+
+When the ask popup (`ask_user_question`) is open, additional shortcuts work so
+the whole dialog can be answered from the keyboard:
+
+| Action | Desktop (macOS/Windows/Linux) | Web (macOS/Windows) |
+| --- | --- | --- |
+| Select option N (single choice) | `Alt` + `1`..`3` | `Cmd/Ctrl` + `Alt` + `1`..`3` |
+| Submit / advance | `Alt` + `S` | `Cmd/Ctrl` + `Alt` + `S` |
+| Move highlight to next / previous option | `↓` / `↑` | `↓` / `↑` |
+| Select / deselect the highlighted option | `Space` | `Space` |
+
+- **Select option** picks the Nth visible option (single-choice questions set it;
+  multi-choice toggles are done with `Space`). Only visible, enabled options are
+  numbered, matching what you see.
+- **Submit** clicks the popup's primary (submit) button to send the answers and
+  advance. It stays on the submit button even while it is disabled (nothing
+  answered yet), and only acts when it is enabled.
+- **Arrow navigation** moves focus between the visible options (pure focus
+  movement, never changes the selection). From the first option `↑` (or the last
+  option `↓`) focus moves back into the popup's text input — which remains a
+  typing target, never a departure point, so the arrows inside the input still
+  move the caret and `Space` still types a space.
+- **Space** selects the focused option: a single-choice radio is selected, a
+  multi-choice checkbox is toggled on/off. If the focus is not on an option,
+  `Space` is left to the browser.
+- A three-level guard keeps these keys from hijacking typing: the popup must be
+  open, the focus must not be in the text input, and no IME composition may be in
+  progress. Otherwise the keys pass through untouched.
+- The popup's own `Enter` behavior is unchanged (it submits), so arrow navigation
+  and `Space` selection never conflict with it.
+
 ## Runtime notes
 
 DSH dispatches shortcuts differently per runtime, so the bundle uses two
