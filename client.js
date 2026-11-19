@@ -54,6 +54,25 @@ window.__ModuleLoader__.load({
     const COMPOSER_SELECTOR = '[data-composer-input]';
     const SESSION_PREFIX = 'session:';
 
+    // Ask popup (DSH `ask_user_question`) anchors: the composer-seat card is
+    // rooted at `[data-question-key]`, one question is shown at a time, and
+    // each option renders as a `[data-option-row]` containing the clickable
+    // option `button` (role radio/checkbox) plus a separate expand-description
+    // `button`. The option button is located by its ARIA role — its `className`
+    // is a CSS-Module hash (not a literal `option`), so we must not select by
+    // class. See openspec specs shortcut-core / desktop-executor-hints
+    // (ask-popup-digit-select delta).
+    const ASK_POPUP_SELECTOR = '[data-question-key]';
+    const ASK_OPTION_ROW_SELECTOR = '[data-option-row]';
+    const ASK_OPTION_BUTTON_SELECTOR = 'button[role="radio"], button[role="checkbox"]';
+    // The submit / next button lives in the popup card's semantic <footer>. The
+    // footer and its buttons are CSS-Module hashed (`css.footer` -> `ggehTG_*`),
+    // so we must not select by class; but the <footer> tag itself is literal, and
+    // among its buttons the primary submit is the LAST one that has text content
+    // (the pager prev/next are icon-only). Verified against
+    // dsh-client-ui-user-questions built output (see design D2).
+    const ASK_FOOTER_SELECTOR = '[data-question-key] footer';
+
     /** Set by the hint overlay on mount; called by the actions to hide the
      *  badges deterministically. For Alt+digit the native bridge swallows the
      *  keyup, so "hide on Alt release" never fires — hiding right after the
@@ -139,6 +158,100 @@ window.__ModuleLoader__.load({
     /** True for the modifier keys themselves (Alt/Meta/Ctrl/Shift). */
     function isModifierKey(event) {
       return event.key === 'Alt' || event.key === 'Meta' || event.key === 'Control' || event.key === 'Shift';
+    }
+
+    /** Locate the open ask popup's selectable option buttons, or return null.
+     *
+     * Shared by all three digit execution points (web/desktop registry resolve
+     * and the desktop capture listener) and by the hint overlay, so the
+     * "is the popup open" decision is made once (design D1) and the numbering
+     * always matches the click targets (D2). Returns null when the popup is
+     * not open, is locked (submission in flight), or has no selectable option
+     * — callers then fall back to session switching.
+     *
+     * Only visible option rows count (the popup shows one question at a time,
+     * so visible rows belong to the current question) — the same trust-the-
+     * visible-DOM philosophy as `sessionRowIds`. Selecting an option is a real
+     * `.click()` on its button (located by ARIA role), reusing the popup's own
+     * `choose` handling (single-select auto-advances, multi-select toggles, last
+     * question does not auto-submit) — this plugin never touches selection state
+     * directly. */
+    function askPopupTargets() {
+      if (!document.querySelector(ASK_POPUP_SELECTOR)) return null;
+      const buttons = Array.from(document.querySelectorAll(ASK_OPTION_ROW_SELECTOR))
+        .filter(isVisible)
+        .map((row) => row.querySelector(ASK_OPTION_BUTTON_SELECTOR))
+        .filter((button) => button && isVisible(button) && !button.disabled);
+      if (buttons.length === 0) return null;
+      return {
+        buttons,
+        /** Click the Nth (0-based) option button. Returns false when the
+         *  position is out of range or the click cannot dispatch. */
+        pick(index) {
+          const button = buttons[index];
+          if (!button) return false;
+          try {
+            button.click();
+          } catch (_) {
+            return false;
+          }
+          // The Alt+digit chord is complete and its keyup is swallowed by the
+          // native bridge on desktop, so hide the badges here rather than
+          // waiting for a keyup that never arrives (mirrors openSessionAt).
+          if (typeof requestHide === 'function') requestHide();
+          return true;
+        }
+      };
+    }
+
+    /** Locate the open ask popup's primary submit / next button, or null.
+     *
+     * Shared by the keyboard.ask-submit resolve, the desktop capture listener,
+     * and the hint overlay so the "is the popup open" decision and the click
+     * target are decided once. Returns null when the popup is not open or there
+     * is no submit button at all (e.g. a review card). A DISABLED submit button
+     * is still returned (so the S badge always marks the submit slot and callers
+     * can decide) — the disabled check lives in clickSubmitPrimary, because the
+     * submit button is disabled whenever nothing is answered yet, and filtering
+     * on disabled here would drop it and fall through to the skip button.
+     *
+     * The primary button is the LAST TEXT button in the footer, identified by
+     * having non-empty text content: the pager prev/next buttons are icon-only
+     * (an icon child, no text — they carry an aria-label instead), while the
+     * footer's text actions are [skip, submit] whose last is the primary button;
+     * in a review card (no actions, pager only) the filter yields nothing, so
+     * Alt+S correctly does nothing instead of paging. We key on intrinsic
+     * textContent rather than class names (CSS-Module hashed) or aria-label
+     * (added by an external Button primitive we can't inspect), so the
+     * discriminator is DOM-self and robust. Clicking is a real `.click()`,
+     * reusing the popup's own `continueFlow` handler (next question when not
+     * last, submit when last) — this plugin never drives submission state
+     * directly. */
+    function submitPrimaryButton() {
+      const footer = document.querySelector(ASK_FOOTER_SELECTOR);
+      if (!footer) return null;
+      const buttons = Array.from(footer.querySelectorAll('button'))
+        .filter((button) => isVisible(button) && button.textContent.trim() !== '');
+      const button = buttons[buttons.length - 1];
+      return button || null;
+    }
+
+    /** Click the popup's primary submit/next button. Returns false when there
+     *  is no enabled primary button to click (missing, or disabled — e.g. busy
+     *  submitting or nothing answered yet). */
+    function clickSubmitPrimary() {
+      const button = submitPrimaryButton();
+      if (!button || button.disabled) return false;
+      try {
+        button.click();
+      } catch (_) {
+        return false;
+      }
+      // The Alt+S chord is complete and its keyup is swallowed by the native
+      // bridge on desktop, so hide the badges here rather than waiting for a
+      // keyup that never arrives (mirrors openSessionAt / option pick).
+      if (typeof requestHide === 'function') requestHide();
+      return true;
     }
 
     function findComposer() {
@@ -272,6 +385,17 @@ window.__ModuleLoader__.load({
                       if (!el || !isVisible(el)) return;
                       targets.push({ label, rect: el.getBoundingClientRect() });
                     };
+                    // Ask popup open: badge the current question's option buttons
+                    // with 1..N — the SAME askPopupTargets() the select action
+                    // uses, so badge digit always matches Alt+digit. Also badge
+                    // the primary submit/next button with S (same predicate as
+                    // the Alt+S action).
+                    const popup = askPopupTargets();
+                    if (popup) {
+                      popup.buttons.slice(0, 9).forEach((button, i) => push(button, String(i + 1)));
+                      push(submitPrimaryButton(), 'S');
+                      return targets;
+                    }
                     push(findComposer(), 'I');
                     // Enumerate the SAME visible rows, in the SAME order, that
                     // the switch action uses, so badge digit always matches
@@ -350,6 +474,18 @@ window.__ModuleLoader__.load({
                 regions: ['page', 'editable'],
                 modals: ['sidebar'],
                 resolve: () => {
+                  // Ask popup open: digits 1..3 select that question's option
+                  // instead of switching sessions (the popup is what the user
+                  // is deciding on right now). Falls back to session switching
+                  // when the popup is closed / has no selectable option.
+                  if (index < 3) {
+                    const popup = askPopupTargets();
+                    if (popup) {
+                      return popup.pick(index)
+                        ? { status: 'handled', run: () => {} }
+                        : { status: 'blocked', reason: '弹窗没有第 ' + n + ' 个选项 / no option ' + n };
+                    }
+                  }
                   // Desktop: EXECUTE here so the native keyboard bridge can drive
                   // the switch. On this macOS build the digit keydown never
                   // reaches the renderer DOM (dead-key/menu swallow), so the DOM
@@ -364,6 +500,28 @@ window.__ModuleLoader__.load({
               'keyboard.session-' + n
             );
           }
+
+          tryRegister(
+            {
+              id: 'keyboard.ask-submit',
+              label: () => '提交/下一题（ask 弹窗）/ Submit or next (ask popup)',
+              aliases: ['submit ask', 'ask next', '提交弹窗'],
+              defaults: defaultsFor('KeyS'),
+              regions: ['page', 'editable'],
+              modals: ['sidebar'],
+              resolve: () => {
+                // Ask popup open: click its primary submit/next button. When
+                // the popup is closed or the button is disabled (busy / nothing
+                // answered / submit not allowed), do nothing and leave the S
+                // key to the browser — this shortcut owns S only inside an open
+                // popup.
+                return clickSubmitPrimary()
+                  ? { status: 'handled', run: () => {} }
+                  : { status: 'blocked', reason: '没有可提交的 ask 弹窗 / no ask popup to submit' };
+              }
+            },
+            'keyboard.ask-submit'
+          );
 
           tryRegister(
             {
@@ -395,6 +553,9 @@ window.__ModuleLoader__.load({
             ctx.effect(() => {
               function onKeyDown(event) {
                 if (!gestureMatches(ctx, event) || !event.code) return;
+                // Skip during IME composition (mirrors the popup's own guard) —
+                // the composing keystroke belongs to the text field, not a chord.
+                if (event.isComposing || event.keyCode === 229) return;
                 let handled = false;
                 // KeyI (Alt+I) is a letter, so its keydown reaches the renderer
                 // DOM and this listener executes it — the same reliable path.
@@ -403,10 +564,27 @@ window.__ModuleLoader__.load({
                 // via the native bridge instead.
                 if (event.code === 'KeyI') {
                   handled = focusComposerEl(findComposer());
+                } else if (event.code === 'KeyS') {
+                  // KeyS (Alt+S) is likewise a letter and reaches the renderer;
+                  // inside an open ask popup it submits/advances via the same
+                  // unified predicate as the registry resolve.
+                  handled = clickSubmitPrimary();
                 } else {
                   const digits = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'];
                   const digit = digits.indexOf(event.code);
-                  if (digit >= 0) handled = openSessionAt(ctx, digit);
+                  // Ask popup open: digits 1..3 select that question's option
+                  // (same unified predicate as the registry resolve), otherwise
+                  // fall back to session switching.
+                  if (digit >= 0 && digit < 3) {
+                    const popup = askPopupTargets();
+                    if (popup) {
+                      handled = popup.pick(digit);
+                    } else {
+                      handled = openSessionAt(ctx, digit);
+                    }
+                  } else if (digit >= 0) {
+                    handled = openSessionAt(ctx, digit);
+                  }
                 }
                 if (handled) {
                   event.preventDefault();
