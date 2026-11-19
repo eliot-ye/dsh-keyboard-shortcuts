@@ -25,7 +25,7 @@ Changelog entries are written by hand; the release flow itself is documented in
   on Desktop.
 - Web client (`client.js`) is injected immediately on page load.
 
-## [Unreleased]
+## [1.1.0] - 2026-11-19
 
 ### Added
 
@@ -46,5 +46,6 @@ Changelog entries are written by hand; the release flow itself is documented in
   typecheck` and `npm test` steps that do not exist (the bundle is plain JS with
   no `scripts` section, `tsconfig.json`, or test suite). Added this changelog.
 
-[Unreleased]: https://github.com/eliot-ye/dsh-keyboard-shortcuts/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/eliot-ye/dsh-keyboard-shortcuts/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/eliot-ye/dsh-keyboard-shortcuts/releases/tag/v1.1.0
 [1.0.0]: https://github.com/eliot-ye/dsh-keyboard-shortcuts/releases/tag/v1.0.0

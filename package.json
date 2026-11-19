@@ -1,6 +1,6 @@
 {
   "name": "dsh-keyboard-shortcuts",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "license": "MIT",
   "description": "Global keyboard shortcuts: focus the composer and switch to the 1st-9th sidebar session, with a numbered hint badge while the modifier is held.",
