@@ -254,6 +254,75 @@ window.__ModuleLoader__.load({
       return true;
     }
 
+    /** Build the ask-popup option navigator, or null when the plain Arrow/Space
+     *  keys must be left alone.
+     *
+     * Three-level guard (design D2): (1) the popup is open, (2) the focus is
+     * NOT in the popup's text input — else the arrows/space belong to typing
+     * and must pass through untouched, (3) IME composition (handled at the
+     * listener's top gate). Returns null when any guard fails, so callers
+     * leave the key to the browser. The option buttons come from the same
+     * `askPopupTargets()` the Alt+digit select uses, so the navigable set
+     * always matches the numbered shortcuts (design D4).
+     *
+     * `move(dir)` is pure focus navigation (never changes selection): +1 is
+     * the next visible option, -1 the previous. When the focus is not on any
+     * option, +1 lands on the first and -1 on the last (the initial anchor).
+     * The popup's text input is a navigation DESTINATION: from the first
+     * option ↑ (or the last option ↓) the focus moves back into the textarea
+     * — but from inside the textarea the keys are left to typing (the guard
+     * above returns null), so the input is reached, not departed from, by
+     * Arrow keys. Without a textarea (a pure-choice question) the ends clamp
+     * instead of wrapping, so a press past the last option stays put rather
+     * than scrolling the page. `toggleActive()` clicks the currently focused
+     * option (if it is one) to select it (radio) or toggle it (checkbox),
+     * reusing the popup's own `choose` handler — this plugin never touches
+     * selection state directly. */
+    function askOptionNav() {
+      if (!document.querySelector(ASK_POPUP_SELECTOR)) return null;
+      const active = document.activeElement;
+      if (active && active.tagName === 'TEXTAREA') return null;
+      const popup = askPopupTargets();
+      if (!popup) return null;
+      const buttons = popup.buttons;
+      const textarea = document.querySelector(ASK_POPUP_SELECTOR + ' textarea');
+      return {
+        move(dir) {
+          const index = buttons.indexOf(document.activeElement);
+          if (index === -1) {
+            // Focus elsewhere (page/body): anchor to an end option, never the
+            // input — a stray ↓ lands on the first option, not the textarea.
+            const target = dir > 0 ? buttons[0] : buttons[buttons.length - 1];
+            target.focus();
+            return true;
+          }
+          const next = index + dir;
+          if (next < 0 || next >= buttons.length) {
+            // End of the option run: reach back into the text input when it
+            // exists (design D3 navigation ring), else clamp in place.
+            if (textarea) {
+              textarea.focus();
+              return true;
+            }
+            buttons[next < 0 ? 0 : buttons.length - 1].focus();
+            return true;
+          }
+          buttons[next].focus();
+          return true;
+        },
+        toggleActive() {
+          const target = document.activeElement;
+          if (!target || buttons.indexOf(target) === -1) return false;
+          try {
+            target.click();
+          } catch (_) {
+            return false;
+          }
+          return true;
+        }
+      };
+    }
+
     function findComposer() {
       return Array.from(document.querySelectorAll(COMPOSER_SELECTOR)).find(isVisible) || null;
     }
@@ -552,7 +621,13 @@ window.__ModuleLoader__.load({
           safely('desktop-listener', () =>
             ctx.effect(() => {
               function onKeyDown(event) {
-                if (!gestureMatches(ctx, event) || !event.code) return;
+                if (!event.code) return;
+                // Plain Arrow/Space keys do NOT require the Alt gesture — they
+                // navigate/select inside an open ask popup. All other keys keep
+                // the gesture gate (they only act on an Alt chord). A plain
+                // nav key that fails the ask-popup guard is left to the browser.
+                const navKey = event.code === 'ArrowUp' || event.code === 'ArrowDown' || event.code === 'Space';
+                if (!navKey && !gestureMatches(ctx, event)) return;
                 // Skip during IME composition (mirrors the popup's own guard) —
                 // the composing keystroke belongs to the text field, not a chord.
                 if (event.isComposing || event.keyCode === 229) return;
@@ -569,6 +644,15 @@ window.__ModuleLoader__.load({
                   // inside an open ask popup it submits/advances via the same
                   // unified predicate as the registry resolve.
                   handled = clickSubmitPrimary();
+                } else if (event.code === 'ArrowDown') {
+                  const nav = askOptionNav();
+                  handled = nav ? nav.move(1) : false;
+                } else if (event.code === 'ArrowUp') {
+                  const nav = askOptionNav();
+                  handled = nav ? nav.move(-1) : false;
+                } else if (event.code === 'Space') {
+                  const nav = askOptionNav();
+                  handled = nav ? nav.toggleActive() : false;
                 } else {
                   const digits = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9'];
                   const digit = digits.indexOf(event.code);
